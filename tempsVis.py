@@ -4,7 +4,7 @@
 Program:      tempsVis.py
 Author:       Jeff VanSickle
 Created:      20160508
-Modified:     20160510
+Modified:     20160514
 
 Program creates visualization of temperature data using tempsDB.sqlite as
 source. Visualization created using D3.js, cribbed from examples that were
@@ -13,6 +13,7 @@ Severance.
 
 UPDATES:
     20160510 JV - Remove data specific to my location and filesystem
+    20160514 JV - Remove unused code writing close parens to flat file
 
 INSTRUCTIONS:
     - Replace '<YOUR_SQLITE_DB>' with the location of your SQLite DB where all
@@ -33,7 +34,7 @@ cursor = tempsDB.cursor()
 # Get all data in DB
 cursor.execute('SELECT * FROM Temps WHERE temps_mean < 150.00')
 
-# Write first part of JS source file
+# Write first part of D3 JS source file
 fHandleJS = open('data.tsv','w')
 fHandleJS.write("date\tDark Sky API\tOpenWeatherMap\tWeather2\tWunderground\tHome\tMean\n")
 
@@ -54,7 +55,6 @@ for msg_row in cursor:
     fHandleJS.write(lineOut)
 
 # Close out array data
-#fHandleJS.write("];")
 fHandleJS.close()
 
 # Clean up DB connection

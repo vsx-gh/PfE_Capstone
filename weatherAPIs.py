@@ -4,7 +4,7 @@
 Program:      weatherAPIs.py
 Author:       Jeff VanSickle
 Created:      20160502
-Modified:     20160510
+Modified:     20160514
 
 Module provides the functions needed to pull weather data from four
 weather APIs:
@@ -18,6 +18,8 @@ APIs output data in JSON.
 
 UPDATES:
     20160510 JV - Remove info specific to me and my location
+    20160514 JV - Clarify error condition as 999.99 in comments, clean spacing,
+                  correct spelling error in comments
 
 INSTRUCTIONS:
     - Replace '<YOUR_API_KEY>' with your API key for each API
@@ -35,7 +37,7 @@ class WeatherAPI:
         self.longitude = lon
 
     def fetchJSON(self, fetchURL):
-        """ Query API addres and return JSON results """
+        """ Query API address and return JSON results """
 
         # Pull data from API
         openURL = urllib.urlopen(fetchURL)
@@ -182,7 +184,7 @@ class WeatherAPI:
         errReading = 999.99
         numReadings = 5
 
-        # Readings of 0.00 (error reading) should not affect means
+        # Readings of 999.99 (error reading) should not affect means
         if read_1 == errReading:
             numReadings = numReadings - 1
         if read_2 == errReading:
@@ -203,6 +205,7 @@ class WeatherAPI:
 
     def getDelta(self, tempReading, tempMean):
         errReading = 999.99
+
         # Get delta from mean
         if tempReading < errReading:
             tempDelta = tempReading - tempMean

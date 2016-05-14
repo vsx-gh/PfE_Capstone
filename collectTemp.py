@@ -4,7 +4,7 @@
 Program:      collectTemp.py
 Author:       Jeff VanSickle
 Created:      20160506
-Modified:     20160510
+Modified:     20160514
 
 Script imports the WeatherAPI class and uses its functions to pull data from
 five sources (four APIs and a local temp sensor):
@@ -21,6 +21,7 @@ are put into a SQLite database for later evaluation.
 
 UPDATES:
     20160510 JV - Remove specific references to file paths and my location
+    20160514 JV - Clean up some spacing
 
 INSTRUCTIONS:
 
@@ -36,7 +37,6 @@ def leadZero(timeStr):
         return '0' + str(timeStr)
     else:
         return str(timeStr)
-
 
 # Set up SQLite DB
 tempsDB = sqlite3.connect('<path_to_SQLite_DB>')
@@ -59,7 +59,6 @@ cursor.execute(
             w2_delta REAL,
             wg_delta REAL,
             ds18b20_delta REAL)
-
         '''
 )
 
@@ -110,7 +109,7 @@ while True:
             temps_mean, DSAPI_delta, OWM_delta, W2_delta, WG_delta, DS18B20_delta))
     commitCounter = commitCounter + 1
 
-    # Commit DB ~15 minutes
+    # Commit DB every ~15 minutes
     if commitCounter == 4:
         tempsDB.commit()
         commitCounter = 0
