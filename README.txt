@@ -14,8 +14,7 @@ house. The temperature sensor is a DS18B20 digital sensor connected to a
 Raspberry Pi through a custom shield that I soldered together. There is not much
 special about the shield; if you can connect the sensor to GPIO BCM pin 25 on
 the Pi, you will be good to go. I put the collected data into a SQLite database,
-then extract data from the database to build a simple line graph with the D3
-Javascript library.
+then extract data from the database to build a simple line graph with Plotly.
 
 Here is a simple rundown of how to run the code and what you will need:
 
@@ -43,13 +42,11 @@ SQLite database. Given the API daily limits, I set my interval to three minutes
 between readings. If the APIs change their limits, you may need to adjust this
 value.
 
-6) Once you have collected some data, you can run tempsVis.py to prepare a
-source file for your visualization. This will generate data.tsv, a tab-separated
-file needed by d3Vis.html. d3Vis.html will be the line graph that represents the
-data you collected. PLEASE NOTE: Google Chrome does not allow opening local
-files by default, so you will have to do some finagling to get that to work. In
-my experience, Firefox does not throw up the same roadblocks. If your d3Vis.html
-is blank, try opening it in Firefox to see your graph.
+6) Once you have collected some data, you can run tempsPlotly.py to create a
+visualization. The code uses the Plotly Python line graph API and outputs an
+HTML and opens it in your default browser. You can export the graphic to a
+static .PNG image, and you can also upload your results to Plotly and host it
+with them.
 
 
 
@@ -65,6 +62,10 @@ I have not found licensing info for Simon Monk's DS18B20 code supplied through
 the Adafruit website. In that case, I have included links to the tutorial where
 I found the code as attribution. All rights to that code belong to its authors
 and/or sponsors.
+
+Plotly code is covered by an MIT license, with documentation covered by a
+Creative Commons license. Please see details here: 
+https://github.com/plotly/plotly.js#copyright-and-license
 
 collectTemp.py, weatherAPIs.py, and tempsVis.py are covered by an MIT license.
 Please see LICENSE.txt for info.
