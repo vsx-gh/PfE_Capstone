@@ -18,35 +18,35 @@ then extract data from the database to build a simple line graph with Plotly.
 
 Here is a simple rundown of how to run the code and what you will need:
 
-1) Set up a simple Apache server on your Raspberry Pi. I am using a first-gen
-Model B board, but you may have something different. Regardless, getting a basic
-Web server up is fairly simple. I will leave this to the plethora of tutorials
-on the Web.
+1) Read comments in webTemp.py for tips on how to get your Pi to recognize the
+sensor and take readings from it. You are welcome to use another board, as
+long as you can get it to read the temperature sensor.
 
-2) Put webTemp.py on your Pi and run it. Make sure you go through the tutorials
-linked in the comments section so you get your sensor reading correctly. After
-your server is up, you can access the current temperature reading from the URL
-specified in the code and comments.
+2) weatherAPIs.py imports webTemp.py and uses it to read the sensor. You can
+split up this code if that works better for you, but this is how I structured
+it.
 
-3) I used a second machine to collect data both from the Pi and the APIs, but
-that is not strictly necessary. You could collect from the sensor on the same
-Pi that you use to grab data from the APIs. In my case, I had some physical
-constraints with regard to networking, so I used two machines.
+3) Register with the APIs in weatherAPIs.py. I keep my unique API keys in
+environment variables on my system in /etc/environment, which exists in
+Raspbian. Depending on the OS of your board, you might not have this file. You
+can put the API keys directly into your code if you so choose, but I treat
+these as credentials and don't hard-code them. You also need to determine your
+latitude and longitude coordinates, which you can find on a mapping site. I
+keep these in /etc/environment too, but they could be hard-coded in your code
+along with your API keys.
 
-4) Register with the APIs in weatherAPIs.py and put your unique API keys in the
-code where instructed. You should also put in the URL of your Pi server so you
-can grab your local temperature reading.
-
-5) Run collectTemp.py to grab data from all of your inputs and write it to a
+4) Run collectTemp.py to grab data from all of your inputs and write it to a
 SQLite database. Given the API daily limits, I set my interval to three minutes
 between readings. If the APIs change their limits, you may need to adjust this
-value.
+value. You can use nohup to background the process, allowing you to log out and
+keep the code running.
 
-6) Once you have collected some data, you can run tempsPlotly.py to create a
+5) Once you have collected some data, you can run tempsPlotly.py to create a
 visualization. The code uses the Plotly Python line graph API and outputs an
-HTML and opens it in your default browser. You can export the graphic to a
-static .PNG image, and you can also upload your results to Plotly and host it
-with them.
+HTML file and opens it in your default browser. You can export the graphic to
+a static PNG image, and you can also upload your results to Plotly and host
+with them. Here is a usage example for tempsPlotly.py:
+    tempsPlotly.py [-h] -t {daily,weekly,monthly,currmonth}
 
 
 
@@ -84,7 +84,7 @@ API Terms
 In compliance with the terms of the various APIs I used, I am citing and
 linking to them here:
 
-Dark Sky API: https://developer.forecast.io/
+Dark Sky API: https://api.darksky.net/
 OpenWeatherMap: http://openweathermap.org/
 Weather2: http://www.myweather2.com/developer/apis.aspx?uref=becda844-8299-4bf6-899b-d771a92b9dbf
 Wunderground: https://www.wunderground.com/weather/api/d/docs

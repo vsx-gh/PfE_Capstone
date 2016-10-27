@@ -3,8 +3,8 @@
 '''
 Program:      collectTemp.py
 Author:       Jeff VanSickle
-Created:      20160506
-Modified:     20160514
+Created:      20160813
+Modified:     20160813
 
 Script imports the WeatherAPI class and uses its functions to pull data from
 five sources (four APIs and a local temp sensor):
@@ -20,14 +20,15 @@ temperature to two points of precision. These items, along with a timestamp,
 are put into a SQLite database for later evaluation.
 
 UPDATES:
-    20160510 JV - Remove specific references to file paths and my location
-    20160514 JV - Clean up some spacing
-
+    20160813 JV - Replace static latitude and longitude with reads from
+                  environment variables
+                  Update SQLite DB location for local system
 INSTRUCTIONS:
 
 '''
 
 from weatherAPIs import WeatherAPI
+import os
 import time
 import sqlite3
 
@@ -38,8 +39,9 @@ def leadZero(timeStr):
     else:
         return str(timeStr)
 
+
 # Set up SQLite DB
-tempsDB = sqlite3.connect('<path_to_SQLite_DB>')
+tempsDB = sqlite3.connect('<YOUR_TEMPS_DB>')
 cursor = tempsDB.cursor()
 
 # Create main DB table
@@ -59,12 +61,18 @@ cursor.execute(
             w2_delta REAL,
             wg_delta REAL,
             ds18b20_delta REAL)
+
         '''
 )
-
+            
 # Geo coordinates (approx) of my home location
-latIn = '<YOUR_LATITUDE>'
-lonIn = '<YOUR_LONGITUDE>'
+latIn = os.getenv('SYSLAT', None)
+lonIn = os.getenv('SYSLON', None)
+
+# Can't proceed without a proper location
+if latIn is None or lonIn is None:
+    print 'System geo coordinates not defined. Exiting....'
+    quit()
 
 # Determine how often to commit DB
 commitCounter = 0
@@ -82,7 +90,7 @@ while True:
     currMin = leadZero(currTime.tm_min)
     currSec = leadZero(currTime.tm_sec)
     timestamp = currYear + currMonth + currDay + currHour + currMin + currSec
-
+    
     # Read from sources
     DSAPI_read = tempFObj.getDSAPI()
     OWM_read = tempFObj.getOWM()
@@ -101,15 +109,15 @@ while True:
     DS18B20_delta = tempFObj.getDelta(DS18B20_read, temps_mean)
 
     # Write to DB
-    cursor.execute('''INSERT INTO Temps
-            (rectime, dsapi_read, owm_read, w2_read, wg_read, ds18b20_read,
+    cursor.execute('''INSERT INTO Temps 
+            (rectime, dsapi_read, owm_read, w2_read, wg_read, ds18b20_read, 
             temps_mean, dsapi_delta, owm_delta, w2_delta, wg_delta, ds18b20_delta)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
             (timestamp, DSAPI_read, OWM_read, W2_read, WG_read, DS18B20_read,
             temps_mean, DSAPI_delta, OWM_delta, W2_delta, WG_delta, DS18B20_delta))
     commitCounter = commitCounter + 1
-
-    # Commit DB every ~15 minutes
+    
+    # Commit DB ~15 minutes
     if commitCounter == 4:
         tempsDB.commit()
         commitCounter = 0
