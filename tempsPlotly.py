@@ -42,6 +42,7 @@ import calendar
 import plotly as py
 import plotly.graph_objs as go
 import argparse
+import os
 
 # Function to process leading zeroes
 def trimLeadZero(strIn):
