@@ -24,8 +24,12 @@ UPDATES:
                   environment variables
                   Update SQLite DB location for local system
     20170130 JV - Use datetime module to build timestamp; drop leadZero function
+    20170130 JV - Add pgaws module for writing to AWS PostgreSQL instance
 
 INSTRUCTIONS:
+    - Replace <YOUR_TEMPS_DB> with location of your SQLite database
+    - Replace <YOUR_DB> with your RDS database
+    - Replace <YOUR_TABLE> with your RDS table in the target database
 
 '''
 
@@ -34,10 +38,18 @@ import os
 import time
 import datetime
 import sqlite3
+import pgaws
 
 # Set up SQLite DB
 tempsDB = sqlite3.connect('<YOUR_TEMPS_DB>')
 cursor = tempsDB.cursor()
+
+# Get cursor for AWS PostgreSQL DB
+try:
+    pgcursor = pgaws.create_cursor()
+except:
+    dtime_now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    print '{}: Failed to create psql cursor.'.format(dtime_now)
 
 # Create main DB table
 cursor.execute(
@@ -102,6 +114,30 @@ while True:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
             (timestamp, DSAPI_read, OWM_read, W2_read, WG_read, DS18B20_read,
             temps_mean, DSAPI_delta, OWM_delta, W2_delta, WG_delta, DS18B20_delta))
+
+    # Get max ID for psql DB, then write to it
+    try:
+        pgcursor.execute("SELECT MAX(id) FROM <YOUR_DB>.<YOUR_TABLE>;")
+        pgmax_id = pgcursor.fetchall()
+        pgrow_id = pgmax_id[0][0] + 1
+
+        pgcursor.execute("""
+            INSERT INTO <YOUR_DB>.<YOUR_TABLE>
+            (id, rectime, dsapi_read, owm_read, w2_read, wg_read,
+            ds18b20_read, temps_mean, dsapi_delta, owm_delta,
+            w2_delta, wg_delta, ds18b20_delta) VALUES
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
+            (pgrow_id, timestamp, DSAPI_read, OWM_read, W2_read, WG_read, 
+            DS18B20_read, temps_mean, DSAPI_delta, OWM_delta, W2_delta, 
+            WG_delta, DS18B20_delta)
+        )
+
+        # Committing more frequently because we're going over the wire
+        pgcursor.execute("COMMIT")
+    except:
+        dtime_now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        print '{}: Error writing to AWS psql.'.format(dtime_now)
+
     commitCounter = commitCounter + 1
     
     # Commit DB ~15 minutes
@@ -113,3 +149,4 @@ while True:
 
 # Clean up
 cursor.close()
+pgcursor.close()
