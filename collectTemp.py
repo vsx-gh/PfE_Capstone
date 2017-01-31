@@ -4,7 +4,7 @@
 Program:      collectTemp.py
 Author:       Jeff VanSickle
 Created:      20160813
-Modified:     20160813
+Modified:     20170130
 
 Script imports the WeatherAPI class and uses its functions to pull data from
 five sources (four APIs and a local temp sensor):
@@ -23,6 +23,8 @@ UPDATES:
     20160813 JV - Replace static latitude and longitude with reads from
                   environment variables
                   Update SQLite DB location for local system
+    20170130 JV - Use datetime module to build timestamp; drop leadZero function
+
 INSTRUCTIONS:
 
 '''
@@ -30,15 +32,8 @@ INSTRUCTIONS:
 from weatherAPIs import WeatherAPI
 import os
 import time
+import datetime
 import sqlite3
-
-def leadZero(timeStr):
-    """ Prepends a zero to time components less than 10 """
-    if timeStr < 10:
-        return '0' + str(timeStr)
-    else:
-        return str(timeStr)
-
 
 # Set up SQLite DB
 tempsDB = sqlite3.connect('<YOUR_TEMPS_DB>')
@@ -81,15 +76,7 @@ commitCounter = 0
 tempFObj = WeatherAPI(latIn, lonIn)
 
 while True:
-    # Build timestamp
-    currTime = time.localtime()
-    currYear = str(currTime.tm_year)
-    currMonth = leadZero(currTime.tm_mon)
-    currDay = leadZero(currTime.tm_mday)
-    currHour = leadZero(currTime.tm_hour)
-    currMin = leadZero(currTime.tm_min)
-    currSec = leadZero(currTime.tm_sec)
-    timestamp = currYear + currMonth + currDay + currHour + currMin + currSec
+    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     
     # Read from sources
     DSAPI_read = tempFObj.getDSAPI()

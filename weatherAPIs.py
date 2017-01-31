@@ -4,7 +4,7 @@
 Program:      weatherAPIs.py
 Author:       Jeff VanSickle
 Created:      20160813
-Modified:     20161024
+Modified:     20170130
 
 Module provides the functions needed to pull weather data from four
 weather APIs:
@@ -26,6 +26,8 @@ UPDATES:
                   function, continue processing and return variable inside
                   else if we got workable JSON
     20161024 JV - Update to new Dark Sky API URL
+    20170130 JV - Use list comprehension to simplify mean calculation
+                  Make error reading (999.99) a class global
 INSTRUCTIONS:
 
 '''
