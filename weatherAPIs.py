@@ -35,11 +35,12 @@ import os
 import webTemp
 
 class WeatherAPI:
-    """ Fetches and stores weather data from selected APIs """
+    """ Fetch and store weather data from selected APIs """
 
     def __init__(self, lat, lon):
         self.latitude = lat
         self.longitude = lon
+        self.errReading = 999.99
 
     def fetchJSON(self, fetchURL):
         """ Query API addres and return JSON results """
@@ -76,13 +77,13 @@ class WeatherAPI:
 
         # We didn't get any JSON
         if outputJSON is None or len(outputJSON) < 1:
-            return 999.99
+            return self.errReading
         else:
             try:
                 currentTemp = outputJSON['currently']['temperature']
                 returnTemp = float(currentTemp)
             except:
-                returnTemp = 999.99
+                returnTemp = self.errReading
 
             # Retrieve current temperature from JSON output
             #print 'Current temp: ', currentTemp
@@ -102,13 +103,13 @@ class WeatherAPI:
 
         # We didn't get any JSON
         if outputJSON is None or len(outputJSON) < 1:
-            return 999.99
+            return self.errReading
         else:
             try:
                 currentTemp = outputJSON['main']['temp']
                 returnTemp = float(currentTemp)
             except:
-                returnTemp = 999.99
+                returnTemp = self.errReading
 
             # Retrieve current temperature from JSON output
             #print 'Current temp: ', currentTemp
@@ -128,13 +129,14 @@ class WeatherAPI:
         outputJSON = self.fetchJSON(dataURL)
 
         if outputJSON is None or len(outputJSON) < 1:
-            return 999.99
+            return self.errReading
         else:
             try:
+                # NOT a typo in the JSON path; "curren_weather" is correct
                 currentTemp = outputJSON['weather']['curren_weather'][0]['temp']
                 returnTemp = float(currentTemp)
             except:
-                returnTemp = 999.99
+                returnTemp = self.errReading
 
             # Retrieve current temperature from JSON output
             #print 'Current temp: ', currentTemp
@@ -153,13 +155,13 @@ class WeatherAPI:
         outputJSON = self.fetchJSON(dataURL)
 
         if outputJSON is None or len(outputJSON) < 1:
-            return 999.99
+            return self.errReading
         else:
             try:
                 currentTemp = outputJSON['current_observation']['temp_f']
                 returnTemp = float(currentTemp)
             except:
-                returnTemp = 999.99
+                returnTemp = self.errReading
 
             # Retrieve current temperature from JSON output
             #print 'Current temp: ', currentTemp
@@ -173,44 +175,33 @@ class WeatherAPI:
         temp_F = "%.2f" % temps[1]     # Set precision 2
 
         if temp_F is None or len(temp_F) < 1:
-            return 999.99
+            return self.errReading
         
         try:
             temp_F = float(temp_F)
         except:
-            temp_F = 999.99
+            temp_F = self.errReading
 
         return temp_F 
 
     def getMean(self, read_1, read_2, read_3, read_4, read_5):
-        errReading = 999.99
-        numReadings = 5
+        """ Find mean of non-error readings read_[1-5] """
 
-        # Readings of 0.00 (error reading) should not affect means
-        if read_1 == errReading:
-            numReadings = numReadings - 1
-        if read_2 == errReading:
-            numReadings = numReadings - 1
-        if read_3 == errReading:
-            numReadings = numReadings - 1
-        if read_4 == errReading:
-            numReadings = numReadings - 1
-        if read_5 == errReading:
-            numReadings = numReadings - 1
+        # Readings of 999.99 (error reading) should not affect means
+        readings = [item for item in [read_1, read_2, read_3, read_4, read_5] if item != self.errReading]
 
-        if numReadings == 0:
+        if len(readings) == 0:
             return 0.00
         else:
-            readTotal = read_1 + read_2 + read_3 + read_4 + read_5
             readMean = readTotal / numReadings
             return readMean
 
     def getDelta(self, tempReading, tempMean):
-        errReading = 999.99
-        # Get delta from mean
-        if tempReading < errReading:
+        """ Calculate and returns difference of tempReading from tempMean """
+
+        if tempReading < self.errReading:
             tempDelta = tempReading - tempMean
         else:
-            tempDelta = errReading
+            tempDelta = self.errReading
 
         return tempDelta
