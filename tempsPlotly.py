@@ -4,7 +4,7 @@
 Program:      tempsPlotly.py
 Author:       Jeff VanSickle
 Created:      20160811
-Modified:     20160820
+Modified:     20170130
 
 Program creates visualization of temperature data using tempsDB.sqlite as
 source. Visualization created using Plotly, cribbed from examples that were
@@ -18,9 +18,20 @@ UPDATES:
                   Add buildDBQuery function to generate SQLite query based
                   on desired timeframe (day, week, month, current month)
                   Add argument passing for calls from CLI
+    20170130 JV - Replace monotonous date parsing with datetime strftime()
+                  Remove try/except and let argparse do its thing
+                  Add parameter for input SQLite database, default output 
+                  graph in /tmp
+                  Add parameter for graph output directory, pass to 
+                  buildDBQuery
+                  Concatenate output path intelligently with os.path.join()
+
 INSTRUCTIONS:
     - Replace instances of '<YOUR...>' with information for your system
     - Ensure you can access the location of your SQLite DB
+
+TO DO:
+    - Revisit PEP8. These conventions are inconsistent.
 
 '''
 
@@ -55,59 +66,51 @@ def createPlotTrace(scatterXVal, scatterYVal, traceName):
     return plotTrace
 
 # Function to build time-based query to SQLite DB
-def buildDBQuery(timeIn):
+def buildDBQuery(timeIn, baseOutDir):
     timeframe = timeIn.lower()
     baseQuery = 'SELECT * FROM Temps WHERE temps_mean < 150.00 '
-    baseOutDir = '<YOUR_OUTPUT_DIR>'
 
     # Build time constraint for target values
     timeNow = datetime.datetime.now()
-    todayStart = str(timeNow.year) + str(timeNow.month).zfill(2) + \
-                 str(timeNow.day).zfill(2) + '000000'
-    todayEnd = str(timeNow.year) + str(timeNow.month).zfill(2) + \
-               str(timeNow.day).zfill(2) + '235959'
+    todayStart = timeNow.strftime('%Y%m%d000000')
+    todayEnd = timeNow.strftime('%Y%m%d235959')
 
     if timeframe == 'all':
         dbQuery = baseQuery
-        outFName = baseOutDir + 'tempsPlotly_All.html'
+        outFName = os.path.join(baseOutDir, 'tempsPlotly_All.html')
     elif timeframe == 'daily':
         # Get all readings for current day
         tomLong = timeNow + datetime.timedelta(days = 1)
-        tomShort = str(tomLong.year) + str(tomLong.month).zfill(2) + \
-                   str(tomLong.day).zfill(2) + '000000'
+        tomShort = tomLong.strftime('%Y%m%d000000')
         dbQuery = baseQuery + 'AND rectime >= ' + todayStart + \
                   ' AND rectime < ' + tomShort
-        outFName = baseOutDir + 'tempsPlotly_Day.html'
+        outFName = os.path.join(baseOutDir, 'tempsPlotly_Day.html')
     elif timeframe == 'weekly':
         # Get all readings for last week up to end of current day
         lastWkLong = timeNow + datetime.timedelta(days = -7)
-        lastWkShort = str(lastWkLong.year) + str(lastWkLong.month).zfill(2) + \
-                      str(lastWkLong.day).zfill(2) + '000000'
+        lastWkShort = lastWkLong.strftime('%Y%m%d000000')
         dbQuery = baseQuery + 'AND rectime >= ' + lastWkShort + \
                   ' AND rectime <= ' + todayEnd
-        outFName = baseOutDir + 'tempsPlotly_Week.html'
+        outFName = os.path.join(baseOutDir, 'tempsPlotly_Week.html')
     elif timeframe == 'monthly':
         # Get all readings one month back (i.e., 08/20 back to 07/20), up to 
         # end of current day 
         lastMonLong = timeNow + datetime.timedelta(days = \
                       calendar.monthrange(timeNow.year, timeNow.month)[1] * -1)
-        lastMonShort = str(lastMonLong.year) + str(lastMonLong.month).zfill(2) + \
-                       str(lastMonLong.day).zfill(2) + '000000'
+        lastMonShort = lastMonLong.strftime('%Y%m%d000000')
         dbQuery = baseQuery + 'AND rectime >= ' + lastMonShort + \
                   ' AND rectime <= ' + todayEnd
-        outFName = baseOutDir + 'tempsPlotly_Month.html'
+        outFName = os.path.join(baseOutDir, 'tempsPlotly_Month.html')
     elif timeframe == 'currmonth':
         # Get all readings for current calendar month (i.e., August 2016)
         startOfMonth = timeNow.replace(day = 1)
-        startMonStr = str(startOfMonth.year) + str(startOfMonth.month).zfill(2) + \
-                      str(startOfMonth.day).zfill(2) + '000000'
+        startMonStr = startOfMonth.strftime('%Y%m%d000000')
         endOfMonth = timeNow.replace(day = calendar.monthrange(timeNow.year, \
                      timeNow.month)[1])
-        endMonStr = str(endOfMonth.year) + str(endOfMonth.month).zfill(2) + \
-                    str(endOfMonth.day).zfill(2) + '235959'
+        endMonStr = endOfMonth.strftime('%Y%m%d235959')
         dbQuery = baseQuery + 'AND rectime >= ' + startMonStr + \
                   ' AND rectime <= ' + endMonStr
-        outFName = baseOutDir + 'tempsPlotly_currMonth.html'
+        outFName = os.path.join('tempsPlotly_currMonth.html')
 
     return dbQuery, outFName
 
@@ -128,18 +131,31 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--timeframe', 
                     choices = ['daily', 'weekly', 'monthly', 'currmonth'], 
                     required = True,
-                    help = 'Timeframe to graph (day, week, month, current month')
+                    help = 'Timeframe to graph (day, week, month, current month)')
+parser.add_argument('-d' '--db',
+                    required = True,
+                    help = 'SQLite database where data is stored')
+parser.add_argument('-o' '--out',
+                    required = True,
+                    help = 'Output directory for your generated graph(s)')
 
-# Get timeframe to graph, default to day
-try:
-    args = parser.parse_args()
-    timeToGraph = args.timeframe
-except:
-    timeToGraph = 'daily'
+# Get arguments - time to parse, DB to use, output location for graphs
+args = parser.parse_args()
+timeToGraph = args.timeframe
+db_loc = args.db
+out_dir = args.out
+
+# Test existence of specified locations
+if not os.path.isfile(db_loc):
+    print 'SQLite DB {} does not exist. Exiting....'.format(db_loc)
+    quit()
+elif not os.path.isdir(out_dir):
+    print 'Path {} does not exist. Exiting....'.format(out_dir)
+    quit()
 
 # Connect to SQLite DB
 try:
-    tempsDB = sqlite3.connect('<YOUR_SQLITE_DB>')
+    tempsDB = sqlite3.connect(db_loc)
     tempsDB.text_factory = str
     cursor = tempsDB.cursor()
 except:
@@ -155,14 +171,13 @@ WG_reads = []
 DS18B20_reads = []
 temps_means = []
 
-
 # Get data from DB
 try:
-    queryInput, graphOutFile = buildDBQuery(timeToGraph)
+    queryInput, graphOutFile = buildDBQuery(timeToGraph, out_dir)
     cursor.execute(queryInput)
 except:
     queryInput = 'SELECT * FROM Temps WHERE temps_mean < 150.00'
-    graphOutFile = '<YOUR_DEFAULT_OUTPUT_FILE>'
+    graphOutFile = '/tmp/plotly_all.html'     # <YOUR_DEFAULT_OUTPUT_FILE>
     cursor.execute(queryInput)
 
 # Start building array data
