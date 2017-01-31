@@ -4,7 +4,7 @@
 Program:      webTemp.py
 Author:       Simon Monk, Jeff VanSickle
 Created:      20160506
-Modified:     20160506
+Modified:     20170130
 
 Program runs on a Raspberry Pi Model B (1st generation). Reads input from
 DS18B20 digital temperature sensor.
@@ -26,7 +26,8 @@ http://www.raspberrypi-spy.co.uk/2013/03/raspberry-pi-1-wire-digital-
 thermometer-sensor/#prettyPhoto/3/
 
 UPDATES:
-    yyyymmdd JV - Changed something, commenting here
+    20170130 JV - Add test condition for bus device file; stop running
+                  modprobe unnecessarily
 
 INSTRUCTIONS:
 
@@ -38,12 +39,16 @@ import os
 import glob
 
 GPIO.setmode(GPIO.BCM)
-os.system('modprobe w1-gpio')
-os.system('modprobe w1-therm')
-          
+
+# Find device file for temp sensor
 base_dir = '/sys/bus/w1/devices/'
 device_folder = glob.glob(base_dir + '28*')[0]
 device_file = device_folder + '/w1_slave'
+
+# Have OS scan for device if not represented in bus
+if not os.path.isfile(device_file):
+    os.system('modprobe w1-gpio')
+    os.system('modprobe w1-therm')
                
 def read_temp_raw():
     f = open(device_file, 'r')
