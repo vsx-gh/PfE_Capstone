@@ -4,7 +4,7 @@
 Program:      collectTemp.py
 Author:       Jeff VanSickle
 Created:      20160813
-Modified:     20170730
+Modified:     20171014
 
 Script imports the WeatherAPI class and uses its functions to pull data from
 five sources (four APIs and a local temp sensor):
@@ -28,6 +28,7 @@ UPDATES:
     20170730 JV - Convert to Python3
                   Replace Postgres RDS with DynamoDB
                   Configure for input parameters
+    20171014 JV - Add options to write "last-write" DynamoDB table
 
 INSTRUCTIONS:
     - Set up SYSLAT and SYSLON environment variables for your location
@@ -43,6 +44,7 @@ import argparse
 from decimal import *
 
 getcontext().prec = 2
+dynamo_put_success = False
 
 # Get input(s)
 inputs = argparse.ArgumentParser()
@@ -52,9 +54,13 @@ inputs.add_argument('-l', '--localdb',
 inputs.add_argument('-d', '--awsdb',
                    required=True,
                    help='Name of DynamoDB table to use')
+inputs.add_argument('-t', '--timestampdb',
+                    required=True,
+                    help='Name of DynamoDB holding last-write timestamp')
 args = inputs.parse_args()
 dynamo_table = args.awsdb
 local_db = args.localdb
+timestamp_table = args.timestampdb
 
 # Set up SQLite DB
 temps_db = sqlite3.connect(local_db)
@@ -63,11 +69,17 @@ sqlite_cursor = temps_db.cursor()
 # Create DynamoDB client
 dynamo_db = boto3.resource('dynamodb')
 
-# Connect to DynamoDB table
+# Connect to DynamoDB resource
 try:
     aws_cursor = dynamo_db.Table(dynamo_table)
 except:
-    print('Error connecting to DynamoDB table. Check name and try again.')
+    print('Error connecting to DynamoDB table {}. Check name and try again.'.format(dynamo_table))
+    quit()
+
+try:
+    last_write_db = dynamo_db.Table(timestamp_table)
+except:
+    print('Error connecting to DynamoDB table {}. Check name and try again.'.format(timestamp_table))
     quit()
 
 # Create main DB table if it doesn't exist
@@ -101,7 +113,7 @@ if lat is None or lon is None:
 tempf_obj = WeatherAPI(lat, lon)
 
 timestamp = datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')
-    
+
 # Read from sources
 DSAPI_read = tempf_obj.get_DSAPI()
 OWM_read = tempf_obj.get_OWM()
@@ -120,12 +132,14 @@ WG_delta = tempf_obj.get_delta(WG_read, temps_mean)
 DS18B20_delta = tempf_obj.get_delta(DS18B20_read, temps_mean)
 
 # Write to local DB
-sqlite_cursor.execute('''INSERT INTO Temps 
-        (rectime, dsapi_read, owm_read, w2_read, wg_read, ds18b20_read, 
+sqlite_cursor.execute('''INSERT INTO Temps
+        (rectime, dsapi_read, owm_read, w2_read, wg_read, ds18b20_read,
         temps_mean, dsapi_delta, owm_delta, w2_delta, wg_delta, ds18b20_delta)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
         (timestamp, DSAPI_read, OWM_read, W2_read, WG_read, DS18B20_read,
         temps_mean, DSAPI_delta, OWM_delta, W2_delta, WG_delta, DS18B20_delta))
+
+temps_db.commit()
 
 # Write to DynamoDB
 try:
@@ -145,8 +159,19 @@ try:
             'ds18b20_delta': Decimal(str(DS18B20_delta))
             }
         )
+    dynamo_put_success = True
 except:
     print('{}: Error writing DynamoDB.'.format(datetime.datetime.utcnow()))
+
+if dynamo_put_success:
+    try:
+        last_write_db.update_item(
+                Key={'id': 1},
+                UpdateExpression='SET rectime = :updatedate',
+                ExpressionAttributeValues={':updatedate': timestamp}
+                )
+    except:
+        print('{}: Error writing last-write DB'.format(datetime.datetime.utcnow()))
 
 # Clean up SQLite cursor
 sqlite_cursor.close()
