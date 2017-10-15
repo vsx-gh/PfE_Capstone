@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 '''
 Program:      webTemp.py
@@ -33,12 +33,12 @@ INSTRUCTIONS:
 
 ''' 
 
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 import time
 import os
 import glob
 
-GPIO.setmode(GPIO.BCM)
+#GPIO.setmode(GPIO.BCM)
 
 # Find device file for temp sensor
 base_dir = '/sys/bus/w1/devices/'
@@ -47,8 +47,8 @@ device_file = device_folder + '/w1_slave'
 
 # Have OS scan for device if not represented in bus
 if not os.path.isfile(device_file):
-    os.system('modprobe w1-gpio')
-    os.system('modprobe w1-therm')
+    os.system('sudo modprobe w1-gpio')
+    os.system('sudo modprobe w1-therm')
                
 def read_temp_raw():
     f = open(device_file, 'r')

@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 '''
 Program:      collectTemp.py
 Author:       Jeff VanSickle
 Created:      20160813
-Modified:     20170130
+Modified:     20170730
 
 Script imports the WeatherAPI class and uses its functions to pull data from
 five sources (four APIs and a local temp sensor):
@@ -25,12 +25,12 @@ UPDATES:
                   Update SQLite DB location for local system
     20170130 JV - Use datetime module to build timestamp; drop leadZero function
     20170130 JV - Add pgaws module for writing to AWS PostgreSQL instance
+    20170730 JV - Convert to Python3
+                  Replace Postgres RDS with DynamoDB
+                  Configure for input parameters
 
 INSTRUCTIONS:
-    - Replace <YOUR_TEMPS_DB> with location of your SQLite database
-    - Replace <YOUR_DB> with your RDS database
-    - Replace <YOUR_TABLE> with your RDS table in the target database
-
+    - Set up SYSLAT and SYSLON environment variables for your location
 '''
 
 from weatherAPIs import WeatherAPI
@@ -38,22 +38,40 @@ import os
 import time
 import datetime
 import sqlite3
-import pgaws
+import boto3
+import argparse
+from decimal import *
+
+getcontext().prec = 2
+
+# Get input(s)
+inputs = argparse.ArgumentParser()
+inputs.add_argument('-l', '--localdb',
+                    required=True,
+                    help='Name of local SQLite DB to use')
+inputs.add_argument('-d', '--awsdb',
+                   required=True,
+                   help='Name of DynamoDB table to use')
+args = inputs.parse_args()
+dynamo_table = args.awsdb
+local_db = args.localdb
 
 # Set up SQLite DB
-tempsDB = sqlite3.connect('<YOUR_TEMPS_DB>')
-cursor = tempsDB.cursor()
+temps_db = sqlite3.connect(local_db)
+sqlite_cursor = temps_db.cursor()
 
-# Get cursor for AWS PostgreSQL DB
+# Create DynamoDB client
+dynamo_db = boto3.resource('dynamodb')
+
+# Connect to DynamoDB table
 try:
-    pgcursor = pgaws.create_cursor()
+    aws_cursor = dynamo_db.Table(dynamo_table)
 except:
-    dtime_now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    print '{}: Failed to create psql cursor.'.format(dtime_now)
+    print('Error connecting to DynamoDB table. Check name and try again.')
+    quit()
 
-# Create main DB table
-cursor.execute(
-        '''
+# Create main DB table if it doesn't exist
+sqlite_cursor.execute('''
         CREATE TABLE IF NOT EXISTS Temps(
             id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
             rectime TEXT UNIQUE,
@@ -67,86 +85,68 @@ cursor.execute(
             owm_delta REAL,
             w2_delta REAL,
             wg_delta REAL,
-            ds18b20_delta REAL)
-
-        '''
+            ds18b20_delta REAL)'''
 )
-            
+
 # Geo coordinates (approx) of my home location
-latIn = os.getenv('SYSLAT', None)
-lonIn = os.getenv('SYSLON', None)
+lat = os.getenv('SYSLAT', None)
+lon = os.getenv('SYSLON', None)
 
 # Can't proceed without a proper location
-if latIn is None or lonIn is None:
-    print 'System geo coordinates not defined. Exiting....'
+if lat is None or lon is None:
+    print('System geo coordinates not defined. Exiting....')
     quit()
 
-# Determine how often to commit DB
-commitCounter = 0
-
 # Temperature object
-tempFObj = WeatherAPI(latIn, lonIn)
+tempf_obj = WeatherAPI(lat, lon)
 
-while True:
-    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+timestamp = datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')
     
-    # Read from sources
-    DSAPI_read = tempFObj.getDSAPI()
-    OWM_read = tempFObj.getOWM()
-    W2_read =  tempFObj.getW2()
-    WG_read =  tempFObj.getWG()
-    DS18B20_read = tempFObj.getDS18B20()
+# Read from sources
+DSAPI_read = tempf_obj.get_DSAPI()
+OWM_read = tempf_obj.get_OWM()
+W2_read =  tempf_obj.get_W2()
+WG_read =  tempf_obj.get_WG()
+DS18B20_read = tempf_obj.get_DS18B20()
 
-    # Get mean
-    temps_mean = tempFObj.getMean(DSAPI_read, OWM_read, W2_read, WG_read, DS18B20_read)
+# Get mean
+temps_mean = tempf_obj.get_mean(DSAPI_read, OWM_read, W2_read, WG_read, DS18B20_read)
 
-    # Get deltas from the mean
-    DSAPI_delta = tempFObj.getDelta(DSAPI_read, temps_mean)
-    OWM_delta = tempFObj.getDelta(OWM_read, temps_mean)
-    W2_delta = tempFObj.getDelta(W2_read, temps_mean)
-    WG_delta = tempFObj.getDelta(WG_read, temps_mean)
-    DS18B20_delta = tempFObj.getDelta(DS18B20_read, temps_mean)
+# Get deltas from the mean
+DSAPI_delta = tempf_obj.get_delta(DSAPI_read, temps_mean)
+OWM_delta = tempf_obj.get_delta(OWM_read, temps_mean)
+W2_delta = tempf_obj.get_delta(W2_read, temps_mean)
+WG_delta = tempf_obj.get_delta(WG_read, temps_mean)
+DS18B20_delta = tempf_obj.get_delta(DS18B20_read, temps_mean)
 
-    # Write to DB
-    cursor.execute('''INSERT INTO Temps 
-            (rectime, dsapi_read, owm_read, w2_read, wg_read, ds18b20_read, 
-            temps_mean, dsapi_delta, owm_delta, w2_delta, wg_delta, ds18b20_delta)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-            (timestamp, DSAPI_read, OWM_read, W2_read, WG_read, DS18B20_read,
-            temps_mean, DSAPI_delta, OWM_delta, W2_delta, WG_delta, DS18B20_delta))
+# Write to local DB
+sqlite_cursor.execute('''INSERT INTO Temps 
+        (rectime, dsapi_read, owm_read, w2_read, wg_read, ds18b20_read, 
+        temps_mean, dsapi_delta, owm_delta, w2_delta, wg_delta, ds18b20_delta)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+        (timestamp, DSAPI_read, OWM_read, W2_read, WG_read, DS18B20_read,
+        temps_mean, DSAPI_delta, OWM_delta, W2_delta, WG_delta, DS18B20_delta))
 
-    # Get max ID for psql DB, then write to it
-    try:
-        pgcursor.execute("SELECT MAX(id) FROM <YOUR_DB>.<YOUR_TABLE>;")
-        pgmax_id = pgcursor.fetchall()
-        pgrow_id = pgmax_id[0][0] + 1
-
-        pgcursor.execute("""
-            INSERT INTO <YOUR_DB>.<YOUR_TABLE>
-            (id, rectime, dsapi_read, owm_read, w2_read, wg_read,
-            ds18b20_read, temps_mean, dsapi_delta, owm_delta,
-            w2_delta, wg_delta, ds18b20_delta) VALUES
-            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
-            (pgrow_id, timestamp, DSAPI_read, OWM_read, W2_read, WG_read, 
-            DS18B20_read, temps_mean, DSAPI_delta, OWM_delta, W2_delta, 
-            WG_delta, DS18B20_delta)
+# Write to DynamoDB
+try:
+    aws_cursor.put_item(
+        Item={
+            'rectime': str(timestamp),
+            'dsapi_read': Decimal(str(DSAPI_read)),
+            'owm_read': Decimal(str(OWM_read)),
+            'w2_read': Decimal(str(W2_read)),
+            'wg_read': Decimal(str(WG_read)),
+            'ds18b20_read': Decimal(str(DS18B20_read)),
+            'temps_mean': Decimal(str(temps_mean)),
+            'dsapi_delta': Decimal(str(DSAPI_delta)),
+            'owm_delta': Decimal(str(OWM_delta)),
+            'w2_delta': Decimal(str(W2_delta)),
+            'wg_delta': Decimal(str(WG_delta)),
+            'ds18b20_delta': Decimal(str(DS18B20_delta))
+            }
         )
+except:
+    print('{}: Error writing DynamoDB.'.format(datetime.datetime.utcnow()))
 
-        # Committing more frequently because we're going over the wire
-        pgcursor.execute("COMMIT")
-    except:
-        dtime_now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        print '{}: Error writing to AWS psql.'.format(dtime_now)
-
-    commitCounter = commitCounter + 1
-    
-    # Commit DB ~15 minutes
-    if commitCounter == 4:
-        tempsDB.commit()
-        commitCounter = 0
-
-    time.sleep(180)
-
-# Clean up
-cursor.close()
-pgcursor.close()
+# Clean up SQLite cursor
+sqlite_cursor.close()

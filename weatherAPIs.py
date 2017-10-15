@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 '''
 Program:      weatherAPIs.py
 Author:       Jeff VanSickle
 Created:      20160813
-Modified:     20170130
+Modified:     20170730
 
 Module provides the functions needed to pull weather data from four
 weather APIs:
@@ -19,7 +19,7 @@ APIs output data in JSON.
 UPDATES:
     20160813 JV - Replace static API key definitions with calls to environment
                   variables
-                  getDS18B20() now pulling data locally instead of from remote
+                  get_DS18B20() now pulling data locally instead of from remote
                   Web server
     20160823 JV - Correct "used before defined" error in API read functions;
                   return value inside if when JSON data is missing and exit
@@ -28,7 +28,10 @@ UPDATES:
     20161024 JV - Update to new Dark Sky API URL
     20170130 JV - Use list comprehension to simplify mean calculation
                   Make error reading (999.99) a class global
+    20170730 JV - Convert to Python 3
+                  Refactor variable names - eliminate camelcase
 INSTRUCTIONS:
+    - Configure API key environment variables for your accounts
 
 '''
 import urllib
@@ -42,134 +45,135 @@ class WeatherAPI:
     def __init__(self, lat, lon):
         self.latitude = lat
         self.longitude = lon
-        self.errReading = 999.99
+        self.err_reading = 999.99
 
-    def fetchJSON(self, fetchURL):
-        """ Query API addres and return JSON results """
+    def fetch_JSON(self, fetch_URL):
+        """ Query API address and return JSON results """
 
         # Pull data from API
         try:
-            openURL = urllib.urlopen(fetchURL)
-            dataIn = openURL.read()
+            open_URL = urllib.request.urlopen(fetch_URL)
+            data_in = open_URL.read().decode('utf-8')
+
         except:
-            resultsJSON = None
-            return resultsJSON
+            results_JSON = None
+            return results_JSON
 
         # Grab JSON from retrieved page, if any exists
         try: 
-            resultsJSON = json.loads(str(dataIn))
+            results_JSON = json.loads(str(data_in))
         except:
-            resultsJSON = None
+            results_JSON = None
 
         # Pretty-print JSON output
-        #print json.dumps(resultsJSON, indent=4)
+        #print(json.dumps(results_JSON, indent=4))
 
-        return resultsJSON
+        return results_JSON
 
-    def getDSAPI(self):
+    def get_DSAPI(self):
         """ Retrieve current temperature from Dark Sky API """
 
         # Construct API URL with key and location
-        baseURL = 'https://api.darksky.net/forecast/'
-        APIkey = os.getenv('DS_APIKEY', None)
-        dataURL = baseURL + APIkey + '/' + self.latitude + ',' + self.longitude
+        base_URL = 'https://api.darksky.net/forecast/'
+        api_key = os.getenv('DS_APIKEY', None)
+        data_URL = base_URL + api_key + '/' + self.latitude + ',' + self.longitude
        
         # Get JSON from URL
-        outputJSON = self.fetchJSON(dataURL)
+        output_JSON = self.fetch_JSON(data_URL)
 
         # We didn't get any JSON
-        if outputJSON is None or len(outputJSON) < 1:
-            return self.errReading
+        if output_JSON is None or len(output_JSON) < 1:
+            return self.err_reading
         else:
             try:
-                currentTemp = outputJSON['currently']['temperature']
-                returnTemp = float(currentTemp)
+                curr_temp = output_JSON['currently']['temperature']
+                return_temp = float(curr_temp)
             except:
-                returnTemp = self.errReading
+                return_temp = self.err_reading
 
             # Retrieve current temperature from JSON output
-            #print 'Current temp: ', currentTemp
-            return returnTemp
+            #print 'Current temp: ', curr_temp
+            return return_temp
 
-    def getOWM(self):
+    def get_OWM(self):
         """ Retrieve current temperature from OpenWeatherMap API """
 
         # Construct URL with key, location, and units
-        baseURL = 'http://api.openweathermap.org/data/2.5/weather?'
-        APIkey = os.getenv('OWM_APIKEY', None)
-        dataURL = baseURL + urllib.urlencode({'lat': self.latitude, \
-            'lon': self.longitude, 'APPID': APIkey, 'units': 'imperial'})
+        base_URL = 'http://api.openweathermap.org/data/2.5/weather?'
+        api_key = os.getenv('OWM_APIKEY', None)
+        data_URL = base_URL + urllib.parse.urlencode({'lat': self.latitude, \
+            'lon': self.longitude, 'APPID': api_key, 'units': 'imperial'})
         
         # Get JSON from URL
-        outputJSON = self.fetchJSON(dataURL)
+        output_JSON = self.fetch_JSON(data_URL)
 
         # We didn't get any JSON
-        if outputJSON is None or len(outputJSON) < 1:
-            return self.errReading
+        if output_JSON is None or len(output_JSON) < 1:
+            return self.err_reading
         else:
             try:
-                currentTemp = outputJSON['main']['temp']
-                returnTemp = float(currentTemp)
+                curr_temp = output_JSON['main']['temp']
+                return_temp = float(curr_temp)
             except:
-                returnTemp = self.errReading
+                return_temp = self.err_reading
 
             # Retrieve current temperature from JSON output
-            #print 'Current temp: ', currentTemp
-            return returnTemp
+            #print 'Current temp: ', curr_temp
+            return return_temp
 
-    def getW2(self):
+    def get_W2(self):
         """ Retrieve current temperature from Weather2 API """
 
         # Construct URL with key, location, units
-        baseURL = 'http://www.myweather2.com/developer/forecast.ashx?'
-        APIkey = os.getenv('W2_APIKEY', None)
+        base_URL = 'http://www.myweather2.com/developer/forecast.ashx?'
+        api_key = os.getenv('W2_APIKEY', None)
         loc = self.latitude + ',' + self.longitude
-        dataURL = baseURL + urllib.urlencode({'uac': APIkey, 'output': 'json', \
+        data_URL = base_URL + urllib.parse.urlencode({'uac': api_key, 'output': 'json', \
                 'query': loc, 'temp_unit': 'f'})
 
         # Get JSON from URL
-        outputJSON = self.fetchJSON(dataURL)
+        output_JSON = self.fetch_JSON(data_URL)
 
-        if outputJSON is None or len(outputJSON) < 1:
-            return self.errReading
+        if output_JSON is None or len(output_JSON) < 1:
+            return self.err_reading
         else:
             try:
                 # NOT a typo in the JSON path; "curren_weather" is correct
-                currentTemp = outputJSON['weather']['curren_weather'][0]['temp']
-                returnTemp = float(currentTemp)
+                curr_temp = output_JSON['weather']['curren_weather'][0]['temp']
+                return_temp = float(curr_temp)
             except:
-                returnTemp = self.errReading
+                return_temp = self.err_reading
 
             # Retrieve current temperature from JSON output
-            #print 'Current temp: ', currentTemp
-            return returnTemp 
+            #print 'Current temp: ', curr_temp
+            return return_temp
 
-    def getWG(self):
+    def get_WG(self):
         """ Retrieve current temperature from Wunderground API """
 
         # Contstruct URL with key, geo options
-        baseURL = 'http://api.wunderground.com/api/'
-        APIkey = os.getenv('WG_APIKEY', None)
-        dataURL = baseURL + APIkey + '/' + 'geolookup/conditions/q/' + \
+        base_URL = 'http://api.wunderground.com/api/'
+        api_key = os.getenv('WG_APIKEY', None)
+        data_URL = base_URL + api_key + '/' + 'geolookup/conditions/q/' + \
                 self.latitude + ',' + self.longitude + '.json'
 
         # Get JSON from URL
-        outputJSON = self.fetchJSON(dataURL)
+        output_JSON = self.fetch_JSON(data_URL)
 
-        if outputJSON is None or len(outputJSON) < 1:
-            return self.errReading
+        if output_JSON is None or len(output_JSON) < 1:
+            return self.err_reading
         else:
             try:
-                currentTemp = outputJSON['current_observation']['temp_f']
-                returnTemp = float(currentTemp)
+                curr_temp = output_JSON['current_observation']['temp_f']
+                return_temp = float(curr_temp)
             except:
-                returnTemp = self.errReading
+                return_temp = self.err_reading
 
             # Retrieve current temperature from JSON output
-            #print 'Current temp: ', currentTemp
-            return returnTemp 
+            #print 'Current temp: ', curr_temp
+            return return_temp
 
-    def getDS18B20(self):
+    def get_DS18B20(self):
         """ Retrieve current temperature from DS18B20 sensor at home base """
 
         # Grab reading from DS18B20 sensor
@@ -177,33 +181,33 @@ class WeatherAPI:
         temp_F = "%.2f" % temps[1]     # Set precision 2
 
         if temp_F is None or len(temp_F) < 1:
-            return self.errReading
+            return self.err_reading
         
         try:
             temp_F = float(temp_F)
         except:
-            temp_F = self.errReading
+            temp_F = self.err_reading
 
-        return temp_F 
+        return temp_F
 
-    def getMean(self, read_1, read_2, read_3, read_4, read_5):
+    def get_mean(self, read_1, read_2, read_3, read_4, read_5):
         """ Find mean of non-error readings read_[1-5] """
 
         # Readings of 999.99 (error reading) should not affect means
-        readings = [item for item in [read_1, read_2, read_3, read_4, read_5] if item != self.errReading]
+        readings = [item for item in [read_1, read_2, read_3, read_4, read_5] if item != self.err_reading]
 
         if len(readings) == 0:
             return 0.00
         else:
-            readMean = readTotal / numReadings
-            return readMean
+            read_mean = sum(readings) / len(readings)
+            return read_mean
 
-    def getDelta(self, tempReading, tempMean):
-        """ Calculate and returns difference of tempReading from tempMean """
+    def get_delta(self, temp_reading, temp_mean):
+        """ Calculate and returns difference of temp_reading from temp_mean """
 
-        if tempReading < self.errReading:
-            tempDelta = tempReading - tempMean
+        if temp_reading < self.err_reading:
+            temp_delta = temp_reading - temp_mean
         else:
-            tempDelta = self.errReading
+            temp_delta = self.err_reading
 
-        return tempDelta
+        return temp_delta
