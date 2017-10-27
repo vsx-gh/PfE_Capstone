@@ -1,7 +1,6 @@
 # Programming for Everybody (Python) - Capstone
 **Jeff VanSickle, Spring 2016**
 
-<br />
 This project was completed as part of the Programming for Everybody specialization
 through Coursera, taken with Dr. Chuck Severance. The project demonstrates
 mastery of the concepts learned in intermediate Python programming.
@@ -23,7 +22,7 @@ DynamoDB. I'm also using Python 3 Lambdas for monitoring.
 
 Here is a simple rundown of how to run the code and what you will need:
 
-1. Read comments in `webTemp.py` for tips on how to get your Pi to recognize the
+* Read comments in `webTemp.py` for tips on how to get your Pi to recognize the
 sensor and take readings from it. You are welcome to use another board, as
 long as you can get it to read the temperature sensor.
 * `weatherAPIs.py` imports `webTemp.py` and uses it to read the sensor. You can
@@ -58,12 +57,9 @@ typically more reliable for me.
 visualization. The code uses the Plotly Python line graph API and outputs an
 HTML file and opens it in your default browser. You can export the graphic to
 a static PNG image, and you can also upload your results to Plotly and host
-with them. Here is a usage example for tempsPlotly.py:
+with them. Here is a usage example for tempsPlotly.py:  
     `vis_tools/tempsPlotly.py [-h] -t {daily,weekly,monthly,currmonth}`
 
-
-
-<br />
 ### Licenses
 
 `vis_tools/d3Vis.html` is not my code and belongs to Michael Bostock. His code is covered
@@ -88,9 +84,6 @@ break, improve, or do anything else with as you see fit. If you choose to
 redistribute it, make an effort to adhere to the licenses set forth here.
 Thanks!
 
-
-
-<br />
 ### API Terms
 
 In compliance with the terms of the various APIs I used, I am citing and
