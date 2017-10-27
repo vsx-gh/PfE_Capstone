@@ -89,7 +89,7 @@ Thanks!
 In compliance with the terms of the various APIs I used, I am citing and
 linking to them here:
 
-Dark Sky API: [https://darksky.net/poweredby/](https://darksky.net/poweredby/)
-OpenWeatherMap: [http://openweathermap.org/](http://openweathermap.org/)
-Weather2: [http://www.myweather2.com/developer/apis.aspx?uref=becda844-8299-4bf6-899b-d771a92b9dbf](http://www.myweather2.com/developer/apis.aspx?uref=becda844-8299-4bf6-899b-d771a92b9dbf)
-Wunderground: [https://www.wunderground.com/weather/api/d/docs](https://www.wunderground.com/weather/api/d/docs)
+Dark Sky API: [https://darksky.net/poweredby/](https://darksky.net/poweredby/)  
+OpenWeatherMap: [http://openweathermap.org/](http://openweathermap.org/)  
+Weather2: [http://www.myweather2.com/developer/apis.aspx?uref=becda844-8299-4bf6-899b-d771a92b9dbf](http://www.myweather2.com/developer/apis.aspx?uref=becda844-8299-4bf6-899b-d771a92b9dbf)  
+Wunderground: [https://www.wunderground.com/weather/api/d/docs](https://www.wunderground.com/weather/api/d/docs)  
