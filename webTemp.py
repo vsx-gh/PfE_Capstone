@@ -37,16 +37,16 @@ import time
 import os
 import glob
 
+# Find device file for temp sensor
+base_dir = '/sys/bus/w1/devices/'
+device_folder = glob.glob(base_dir + '28*')[0]
+device_file = device_folder + '/w1_slave'
+
 def get_device():
     '''
     Finds device files for temp sensor
     Attempts to find the physical device if files not present
     '''
-
-    # Find device file for temp sensor
-    base_dir = '/sys/bus/w1/devices/'
-    device_folder = glob.glob(base_dir + '28*')[0]
-    device_file = device_folder + '/w1_slave'
 
     # Have OS scan for device if not represented in bus
     if not os.path.isfile(device_file):
