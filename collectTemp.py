@@ -4,7 +4,7 @@
 Program:      collectTemp.py
 Author:       Jeff VanSickle
 Created:      20160813
-Modified:     20171014
+Modified:     20171101
 
 Script imports the WeatherAPI class and uses its functions to pull data from
 five sources (four APIs and a local temp sensor):
@@ -29,6 +29,7 @@ UPDATES:
                   Replace Postgres RDS with DynamoDB
                   Configure for input parameters
     20171014 JV - Add options to write "last-write" DynamoDB table
+    20171101 JV - Add check on None return from temp retrieval, exit cleanly
 
 INSTRUCTIONS:
     - Set up SYSLAT and SYSLON environment variables for your location
@@ -120,6 +121,11 @@ OWM_read = tempf_obj.get_OWM()
 W2_read =  tempf_obj.get_W2()
 WG_read =  tempf_obj.get_WG()
 DS18B20_read = tempf_obj.get_DS18B20()
+
+if None in [DSAPI_read, OWM_read, W2_read, WG_read, DS18B20_read]:
+    print('Problem retrieving one or more readings. Exiting....')
+    sqlite_cursor.close()
+    quit()
 
 # Get mean
 temps_mean = tempf_obj.get_mean(DSAPI_read, OWM_read, W2_read, WG_read, DS18B20_read)

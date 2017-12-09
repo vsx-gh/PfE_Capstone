@@ -33,22 +33,32 @@ INSTRUCTIONS:
 
 ''' 
 
-#import RPi.GPIO as GPIO
 import time
 import os
 import glob
 
-#GPIO.setmode(GPIO.BCM)
+def get_device():
+    '''
+    Finds device files for temp sensor
+    Attempts to find the physical device if files not present
+    '''
 
-# Find device file for temp sensor
-base_dir = '/sys/bus/w1/devices/'
-device_folder = glob.glob(base_dir + '28*')[0]
-device_file = device_folder + '/w1_slave'
+    # Find device file for temp sensor
+    base_dir = '/sys/bus/w1/devices/'
+    device_folder = glob.glob(base_dir + '28*')[0]
+    device_file = device_folder + '/w1_slave'
 
-# Have OS scan for device if not represented in bus
-if not os.path.isfile(device_file):
-    os.system('sudo modprobe w1-gpio')
-    os.system('sudo modprobe w1-therm')
+    # Have OS scan for device if not represented in bus
+    if not os.path.isfile(device_file):
+        os.system('sudo modprobe w1-gpio')
+        os.system('sudo modprobe w1-therm')
+
+    if not os.path.isfile(device_file):
+        return False
+
+    return True
+
+
                
 def read_temp_raw():
     f = open(device_file, 'r')
@@ -57,7 +67,14 @@ def read_temp_raw():
 
     return lines
 
+
+
 def read_temp():
+    have_therm = get_device()     # Make sure probe available for reading
+
+    if not have_therm:
+        return None
+
     lines = read_temp_raw()
 
     while lines[0].strip()[-3:] != 'YES':

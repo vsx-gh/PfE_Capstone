@@ -178,6 +178,9 @@ class WeatherAPI:
 
         # Grab reading from DS18B20 sensor
         temps = webTemp.read_temp()
+        if temps == None:
+            return temps
+
         temp_F = "%.2f" % temps[1]     # Set precision 2
 
         if temp_F is None or len(temp_F) < 1:
